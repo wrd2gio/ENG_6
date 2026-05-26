@@ -4,35 +4,35 @@ A MATLAB-based card memory (concentration) game with dual control: **GUI buttons
 
 ## Features
 
-- **Local Play**: Single-player mode with GUI card buttons
-- **Sensor Control**: Use device acceleration and orientation to select cards
+- **Local Play**: Single-player mode with GUI card buttons (basis for the functional multiplayer game)
+- **Sensor Control**: Use device acceleration and/or orientation to select cards 
 - **Online Play**: ThingSpeak-enabled multiplayer with real-time move synchronization
-- **Score Tracking**: Local and remote opponent scores displayed live
+- **Score Tracking**: Local and remote opponent scores displayed live (possible leaderboard function??)
 
 ## Quick Start
 
 ### Local Play (GUI Only)
 ```matlab
-game_logic()                % Default 8 pairs (16 cards)
-game_logic('Pairs', 6)      % Custom 6 pairs (12 cards)
-game_logic('UseSensors', false)  % GUI buttons only, no sensors
+game_logic()                % Default by MATLAB Code 8 pairs (16 cards)
+game_logic('Pairs', 6)      % Custom gamemode (future reference) 6 pairs (12 cards)
+game_logic('UseSensors', false)  % GUI buttons only, no sensors (copilot addition)
 ```
 
 ### Sensor-Controlled Play (Mobile Device)
-Requires MATLAB Mobile or a connected iOS/Android device with mobiledev support:
 ```matlab
 game_logic('UseSensors', true)   % Auto-enable sensors if available
 ```
 
-**Sensor Mapping:**
+**Sensor Mapping:** 
+1. Warning this is a `estimation provided` by copilot 
 - **Roll angle** (-90° to +90°): Selects column left to right
 - **Pitch angle** (-90° to +90°): Selects row top to bottom
 - **Acceleration magnitude** (>25 m/s²): Tap/shake to confirm selection
 
 ### Online Play (ThingSpeak)
 ```matlab
-opts.ChannelID = 1854971;  % Modify as needed
-opts.PollSec = 5;          % Check opponent moves every 5s
+opts.ChannelID = 1854971;  % Modify as needed per channelID
+opts.PollSec = 5;          % Check opponent moves every 5s good baseline
 game_logic('ThingSpeak', opts, 'Pairs', 8)
 ```
 
@@ -61,12 +61,6 @@ game_logic('ThingSpeak', opts, 'Pairs', 8)
 - `game_logi.m` – Main game logic and GUI
 - `README.md` – This file
 
-## Requirements
-
-- MATLAB R2019b or later
-- Image Processing Toolbox (for timer functions)
-- Optional: MATLAB Mobile app (for sensor control)
-
 ## Troubleshooting
 
 ### Sensors Not Detected
@@ -75,6 +69,7 @@ If mobiledev initialization fails:
 2. Verify device is paired with MATLAB
 3. Run with `UseSensors=false` to use GUI only
 4. Check: `mobiledev()` in MATLAB console
+5. review the possible errors if the problem can not be found
 
 ### ThingSpeak Connection Issues
 1. Verify internet connection
