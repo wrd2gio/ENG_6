@@ -1,4 +1,3 @@
-matlab
 function game_logic(varargin)
 % GAME_LOGIC  Card memory (concentration) game with optional ThingSpeak
 % integration and mobiledev sensor control.
@@ -21,13 +20,12 @@ function game_logic(varargin)
 
 % Minimal standalone implementation: creates a GUI with buttons as cards,
 % supports flipping, matching and optional ThingSpeak exchange of moves.
-
-% Parse inputs
-p = inputParser;
+% Parse inputs (parameters defining classes)
+p = inputParser; % for flexible parameter handling (data mapping and management)
 addParameter(p,'Pairs',8, @(x) isnumeric(x) && isscalar(x) && x > 0);
 addParameter(p,'ThingSpeak',struct(), @isstruct);
-addParameter(p,'UseSensors',true, @islogical);
-addParameter(p,'ChannelID',1854971, @isnumeric);
+addParameter(p,'UseSensors',true, @islogical); % enable mobiledev sensor control for multiplayer but can be disabled for local play or if mobiledev is unavailable 
+addParameter(p,'ChannelID',1854971, @isnumeric); % fix channel ID for consistency
 parse(p,varargin{:});
 nPairs = p.Results.Pairs;
 tsOpts = p.Results.ThingSpeak;
@@ -35,7 +33,7 @@ useSensors = p.Results.UseSensors;
 defChannelID = p.Results.ChannelID;
 
 % Game state
-N = nPairs*2;
+N = nPairs*2; % total cards 
 deck = repmat(1:nPairs,1,2);
 deck = deck(randperm(N));
 state = zeros(1,N); % 0=face down, 1=face up, 2=matched
@@ -60,7 +58,7 @@ if useSensors
 		mobiledev_obj.OrientationSensorEnabled = 1;
 		sensorAvail = true;
 	catch
-		warning('mobiledev not available; using GUI controls only.');
+		warning('mobiledev not available; only GUI controls available.');
 		useSensors = false;
 		sensorAvail = false;
 	end
@@ -69,7 +67,7 @@ else
 	sensorAvail = false;
 end
 
-% Create GUI
+% Create GUI fix for app.mlx (copilot coded)
 fig = figure('Name','Card Memory - game_logi','NumberTitle','off','MenuBar','none','ToolBar','none','Resize','off');
 cols = ceil(sqrt(N));
 rows = ceil(N/cols);
