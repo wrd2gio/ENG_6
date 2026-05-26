@@ -24,10 +24,10 @@ function game_logic(varargin)
 
 % Parse inputs
 p = inputParser;
-addParameter(p,'Pairs',8,@(x)isnumeric(x)&&isscalar(x)&&x>0);
-addParameter(p,'ThingSpeak',struct(),@isstruct);
-addParameter(p,'UseSensors',true,@islogical);
-addParameter(p,'ChannelID',1854971,@isnumeric);
+addParameter(p,'Pairs',8, @(x) isnumeric(x) && isscalar(x) && x > 0);
+addParameter(p,'ThingSpeak',struct(), @isstruct);
+addParameter(p,'UseSensors',true, @islogical);
+addParameter(p,'ChannelID',1854971, @isnumeric);
 parse(p,varargin{:});
 nPairs = p.Results.Pairs;
 tsOpts = p.Results.ThingSpeak;
@@ -47,7 +47,7 @@ scoreRemote = 0;
 % ThingSpeak state with hardcoded API keys
 writeKey = '7OOJBDU1FXB2AAU5';
 readKey = '3FLYFWUQZSVKN5W3';
-channelID = ifelse(isfield(tsOpts,'ChannelID')&&~isempty(tsOpts.ChannelID), tsOpts.ChannelID, defChannelID);
+channelID = ifelse(isfield(tsOpts,'ChannelID') && ~isempty(tsOpts.ChannelID), tsOpts.ChannelID, defChannelID);
 pollSec = ifelse(isfield(tsOpts,'PollSec'),tsOpts.PollSec,5);
 useTS = ~isempty(writeKey) && ~isempty(readKey) && ~isempty(channelID);
 
@@ -166,7 +166,9 @@ end
 	end
 
 	function checkWin()
-		if all(state==2)
+		if all(state==2) % change state to the number of pairs you want to win with ie. in a game of 10 cards
+            % only 5 pairs can be matched to tie so 6 pairs is needed to win by majority (more than half)
+            % `core concept required for the game innvoation`
 			msgbox(sprintf('Game over! You: %d  Opponent: %d',scoreLocal,scoreRemote),'Finished');
 			if ~isempty(t) && isvalid(t); stop(t); delete(t); end
 		end
