@@ -1,24 +1,23 @@
 matlab
 function game_logic(varargin)
 % GAME_LOGIC  Card memory (concentration) game with optional ThingSpeak
-% integration for online play.
+% integration and mobiledev sensor control.
 %
 % Usage:
-%   game_logic()                     % start local single-player game
+%   game_logic()                     % start local single-player game with mobiledev
 %   game_logic('Pairs',8)            % start local game with 8 pairs
-%   game_logic('ThingSpeak',opts)    % enable ThingSpeak online moves
+%   game_logic('UseSensors',false)   % disable sensor control (GUI only)
 %
-% ThingSpeak options (struct fields):
-%   ChannelID  - numeric channel id
-%   WriteKey   - write API key (to publish moves)
-%   ReadKey    - read API key (to read opponent moves)
-%   PollSec    - polling interval in seconds (default 5)
+% API Keys (hardcoded in code):
+%   WriteKey:  7OOJBDU1FXB2AAU5
+%   ReadKey:   3FLYFWUQZSVKN5W3
+%   ChannelID: Set via ThingSpeak parameter or auto-detected
 
 % Example:
 %   opts.ChannelID = 12345;
 %   opts.WriteKey = 'ABCDE';
 %   opts.ReadKey  = 'VWXYZ';
-%   game_logi('Pairs',6,'ThingSpeak',opts)
+%   game_logic('Pairs',6,'ThingSpeak',opts)
 
 % Minimal standalone implementation: creates a GUI with buttons as cards,
 % supports flipping, matching and optional ThingSpeak exchange of moves.
@@ -27,9 +26,13 @@ function game_logic(varargin)
 p = inputParser;
 addParameter(p,'Pairs',8,@(x)isnumeric(x)&&isscalar(x)&&x>0);
 addParameter(p,'ThingSpeak',struct(),@isstruct);
+addParameter(p,'UseSensors',true,@islogical);
+addParameter(p,'ChannelID',1854971,@isnumeric);
 parse(p,varargin{:});
 nPairs = p.Results.Pairs;
 tsOpts = p.Results.ThingSpeak;
+useSensors = p.Results.UseSensors;
+defChannelID = p.Results.ChannelID;
 
 % Game state
 N = nPairs*2;
@@ -41,15 +44,29 @@ busy = false;
 scoreLocal = 0;
 scoreRemote = 0;
 
-% ThingSpeak state
-useTS = isfield(tsOpts,'ChannelID') && ~isempty(tsOpts.ChannelID) && isfield(tsOpts,'WriteKey') && isfield(tsOpts,'ReadKey');
-if useTS
-	channelID = tsOpts.ChannelID;
-	writeKey = tsOpts.WriteKey;
-	readKey = tsOpts.ReadKey;
-	pollSec = ifelse(isfield(tsOpts,'PollSec'),tsOpts.PollSec,5);
+% ThingSpeak state with hardcoded API keys
+writeKey = '7OOJBDU1FXB2AAU5';
+readKey = '3FLYFWUQZSVKN5W3';
+channelID = ifelse(isfield(tsOpts,'ChannelID')&&~isempty(tsOpts.ChannelID), tsOpts.ChannelID, defChannelID);
+pollSec = ifelse(isfield(tsOpts,'PollSec'),tsOpts.PollSec,5);
+useTS = ~isempty(writeKey) && ~isempty(readKey) && ~isempty(channelID);
+
+% Initialize mobiledev sensor if enabled
+sensorData = struct('accel',[0 0 0],'orient',[0 0 0],'taps',0,'lastCardIdx',[]);
+if useSensors
+	try
+		mobiledev_obj = mobiledev();
+		mobiledev_obj.AccelerationSensorEnabled = 1;
+		mobiledev_obj.OrientationSensorEnabled = 1;
+		sensorAvail = true;
+	catch
+		warning('mobiledev not available; using GUI controls only.');
+		useSensors = false;
+		sensorAvail = false;
+	end
 else
-	channelID = []; writeKey = ''; readKey = ''; pollSec = 5;
+	mobiledev_obj = [];
+	sensorAvail = false;
 end
 
 % Create GUI
@@ -75,12 +92,20 @@ lblScore = uicontrol(fig,'Style','text','String',sprintf('You: %d  Opponent: %d'
 
 btnReset = uicontrol(fig,'Style','pushbutton','String','Reset','Position',[figWidth-80,10,70,30],'Callback',@resetGame);
 
-% ThingSpeak polling timer
+% ThingSpeak polling timer and sensor polling timer
 if useTS
-	t = timer('ExecutionMode','fixedSpacing','Period',pollSec,'TimerFcn',@pollThingSpeak);
-	start(t);
+	tTS = timer('ExecutionMode','fixedSpacing','Period',pollSec,'TimerFcn',@pollThingSpeak);
+	start(tTS);
 else
-	t = [];
+	tTS = [];
+end
+
+% Sensor polling timer (faster than ThingSpeak)
+if useSensors && sensorAvail
+	tSensor = timer('ExecutionMode','fixedSpacing','Period',0.1,'TimerFcn',@pollSensors);
+	start(tSensor);
+else
+	tSensor = [];
 end
 
 % Nested callbacks
@@ -203,6 +228,35 @@ end
 		end
 	end
 
+	function pollSensors(~,~)
+		% Read accelerometer/orientation and map to card selection
+		if ~sensorAvail; return; end
+		try
+			accel = mobiledev_obj.Acceleration;
+			orient = mobiledev_obj.Orientation;
+			% Use acceleration magnitude to detect tap/shake (simple threshold)
+			accelMag = sqrt(sum(accel.^2));
+			if accelMag > 25 % Threshold for significant motion/tap
+				% Map orientation to card grid position
+				roll = orient(1); pitch = orient(2);
+				% Quantize roll/pitch to grid indices (0-3 in each axis for 4x4 grid)
+				row = max(1,min(rows,round(1 + (pitch+90)/180*rows)));
+				col = max(1,min(cols,round(1 + (roll+90)/180*cols)));
+				idx = (row-1)*cols + col;
+				if idx >= 1 && idx <= N
+					% Trigger card selection if not already selected
+					if ~isequal(sensorData.lastCardIdx, idx)
+						sensorData.lastCardIdx = idx;
+						% Simulate button click
+						cardCallback(struct('UserData',idx));
+					end
+				end
+			end
+		catch
+			% sensor read error
+		end
+	end
+
 	function handleRemoteMove(move)
 		% Process a move struct received from ThingSpeak
 		if ~isstruct(move) || ~isfield(move,'type'); return; end
@@ -236,11 +290,17 @@ end
 		if cond; out = a; else out = b; end
 	end
 
-% Clean up timer on close
+% Clean up timers on close
 fig.CloseRequestFcn = @onClose;
 	function onClose(~,~)
-		if ~isempty(t) && isvalid(t)
-			try stop(t); delete(t); catch; end
+		if ~isempty(tTS) && isvalid(tTS)
+			try stop(tTS); delete(tTS); catch; end
+		end
+		if ~isempty(tSensor) && isvalid(tSensor)
+			try stop(tSensor); delete(tSensor); catch; end
+		end
+		if sensorAvail
+			try delete(mobiledev_obj); catch; end
 		end
 		delete(fig);
 	end
