@@ -8,112 +8,53 @@ classdef GameState < handle
         TargetNumber
         GameOver = false
         Winner = 0
-        RoundNum = 0
-
-        % Exist for Player Skips
-        RollsRemainingThisTurn = 1   % How many rolls player must do this turn (1 normally, 2 if penalized)
-        P1PenaltyNext = false        % Does Player 1 have to roll twice next turn?
-        P2PenaltyNext = false        % Does Player 2 have to roll twice next turn?
     end
+
+
+ % ---ThingSpeak Config--- %
+    properties(Access = private)
+        ChannelID = 3383934;                % ThingSpeak Channel ID
+        WriteAPIKey = 'NPMTEL19I4BXYDHS';  % Write API Key
+    end
+
 
     methods
         function obj = GameState()  
             obj.TargetNumber = randi([20 30]);
         end
         function reset(obj)
-            obj.P1Score = 0;
-            obj.P2Score = 0;
+            obj.PlayerScores = [0 0];
             obj.CurrentPlayer = 1;
             obj.TargetNumber = randi([20, 30]);
             obj.GameOver = false;
             obj.Winner = 0;
-            obj.RollsRemainingThisTurn = 1;
-            obj.P1PenaltyNext = false;
-            obj.P2PenaltyNext = false;
         end
         function roll = RollDice(obj)
             if obj.GameOver
                 return;
             end
 
-
-
             roll = randi([1 6]);
             if obj.CurrentPlayer == 1
-                obj.P1Score = roll + obj.P1Score;
-                obj.TokenHolder = obj.TokenHolder + 1;
+                obj.P1Score = roll + obj.P1Score
+                % obj.TokenHolder = 2;
+
+                return
             else
-                obj.P2Score = roll + obj.P2Score;
-                obj.TokenHolder = obj.TokenHolder + 1;
+                obj.P2Score = roll + obj.P2Score
+                return
             end
-
-            %Check Win Condition
-            if obj.CurrentPlayer == 1 && obj.P1Score >= obj.TargetNumber
-                obj.Winner = 2;
-                obj.GameOver = true;
-                return;
-            elseif obj.CurrentPlayer == 2 && obj.P2Score >= obj.TargetNumber
-                obj.Winner = 2;
-                obj.GameOver = true;
-                return;
-            end
-
-            obj.RollsRemainingThisTurn = obj.RollsRemainingThisTurn - 1;
-            if obj.RollsRemainingThisTurn <= 0
-                obj.switchTurn();
-            end
-
-        end
-        function switchTurn(obj)
-            obj.CurrentPlayer = 3 - obj.CurrentPlayer;
-
-            if (obj.CurrentPlayer == 1) && (obj.P1PenaltyNext == true)
-                obj.P1PenaltyNext = false; % Reset penalty for Player 1
-                obj.RollsRemainingThisTurn = 2;
-            elseif obj.CurrentPlayer == 2 && obj.P2PenaltyNext
-                obj.RollsRemainingThisTurn = 2;
-                obj.P2PenaltyNext = false;  % Consume the penalty
-            else
-                obj.RollsRemainingThisTurn = 1;
-            end
-
-            obj.RoundNum = obj.RoundNum + 1;
-
-
-        end
-                
-        function skipTurn(obj)
-            if obj.GameOver; return; end
-            
-            % Apply penalty to current player for their NEXT turn
-            if obj.CurrentPlayer == 1
-                obj.P1PenaltyNext = true;
-            else
-                obj.P2PenaltyNext = true;
-            end
-            
-            % Switch turns immediately (skip this turn without rolling)
-            obj.switchTurn();
-            
-        end
-
-
-        function remaining = getRollsRemaining(obj)
-            remaining = obj.RollsRemainingThisTurn;
-        end
-        function status = getTurnStatus(obj)
-            % Helper for UI to display game status
-            if obj.GameOver == true
-                status = sprintf('Game Over! Player %d wins!', obj.Winner);
-
-            elseif obj.RollsRemainingThisTurn == 2
-                status = sprintf('Player %d - Must roll TWICE this turn (penalty from previous skip)', obj.CurrentPlayer);
-            else
-                status = sprintf('Player %d - Roll once then turn ends', obj.CurrentPlayer);
+            response = thinkspeakWrite (obj.ChannelID, [1, 2, 3, 4, 5], {obj.CurrentPlayer, roll, 1, obj.P1Score, obj.P2Score}, 'WriteKey', obj.WriteAPIKey);
+            pause(1); % for the delay in writing to ThingSpeak
+            if isempty(response)
+                disp('Failed to send data to ThingSpeak.');
             end
             
         end
-            
+
+
+
+
     end
     
 end

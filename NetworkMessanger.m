@@ -1,14 +1,14 @@
 %ThinkSpeak Channel ID and API Key
 
-%ChannelID =
-%WriteAPIKey =
-%ReadAPIKey =
+%ChannelID = 3383934
+%WriteAPIKey = NPMTEL19I4BXYDHS
+%ReadAPIKey = RTC2OM3Q1X84MTGH
 
 % ---Config--- %
 
-ChannelID = 123456; % Replace with your actual Channel ID
-WriteAPIKey = 'YOUR_WRITE_API_KEY'; % Replace with your actual Write API Key
-ReadAPIKey = 'YOUR_READ_API_KEY'; % Replace with your actual Read API Key
+ChannelID = 3383934; % Replace with your actual Channel ID
+WriteAPIKey = 'NPMTEL19I4BXYDHS'; % Replace with your actual Write API Key
+ReadAPIKey = 'RTC2OM3Q1X84MTGH'; % Replace with your actual Read API Key
 
 
 % These parameters are used to send data to ThingsSpeak and read with the API key.
@@ -29,10 +29,9 @@ thinkspeakWrite (ChannelID,[player_id, dice_roll, turn_number, p1_score, p2_scor
 % Double check that everything was sent correctly.
 response = thinkspeakWrite (ChannelID,[player_id, dice_roll, turn_number, p1_score, p2_score],'WriteKey', WriteAPIKey);
 
-if isempty(response);
+if isempty(response)
     disp('Failed to send data to ThingSpeak.');
 end
 
 % initial read to thingspeak.
 thinkspeakRead(ChannelID, 'ReadKey', ReadAPIKey, 'NumPoints', 1); % Reads the most recent entry from the channel
-
