@@ -1,37 +1,82 @@
-%ThinkSpeak Channel ID and API Key
+classdef NetworkMessanger < handle
+    % ThingSpeak helper for sharing dice game state between two devices.
 
-%ChannelID = 3383934
-%WriteAPIKey = NPMTEL19I4BXYDHS
-%ReadAPIKey = RTC2OM3Q1X84MTGH
+    properties
+        ChannelID = 3383747
+        WriteAPIKey = '7OOJBDU1FXB2AAU5'
+        ReadAPIKey = '3FLYFWUQZSVKN5W3'
+    end
 
-% ---Config--- %
+    methods
+        function obj = NetworkMessanger(channelID, writeKey, readKey)
+            if nargin >= 1 && ~isempty(channelID)
+                obj.ChannelID = channelID;
+            end
+            if nargin >= 2 && ~isempty(writeKey)
+                obj.WriteAPIKey = writeKey;
+            end
+            if nargin >= 3 && ~isempty(readKey)
+                obj.ReadAPIKey = readKey;
+            end
+        end
 
-ChannelID = 3383934; % Replace with your actual Channel ID
-WriteAPIKey = 'NPMTEL19I4BXYDHS'; % Replace with your actual Write API Key
-ReadAPIKey = 'RTC2OM3Q1X84MTGH'; % Replace with your actual Read API Key
+        function entryID = publishGameState(obj, game, lastRoll)
+            if nargin < 3 || isempty(lastRoll)
+                lastRoll = 0;
+            end
 
+            fields = 1:8;
+            values = [ ...
+                game.CurrentPlayer, ...
+                lastRoll, ...
+                game.RoundNum, ...
+                game.P1Score, ...
+                game.P2Score, ...
+                game.TargetNumber, ...
+                double(game.GameOver), ...
+                game.Winner ...
+            ];
 
-% These parameters are used to send data to ThingsSpeak and read with the API key.
-% and the apprioately numbered field to the correct data in said field.
+            entryID = thingSpeakWrite(obj.ChannelID, values, ...
+                'Fields', fields, ...
+                'WriteKey', obj.WriteAPIKey);
 
-params = [...
-        "api_key",       writeAPIKey; ...
-        "field1",        num2str(player_id); ...
-        "field2",        num2str(dice_roll); ...
-        "field3",        num2str(turn_number); ...
-        "field4",        num2str(p1_score); ...
-        "field5",        num2str(p2_score) ...
-    ];
+        end
 
-% inital write to thingspeak.
-thinkspeakWrite (ChannelID,[player_id, dice_roll, turn_number, p1_score, p2_score],'WriteKey', WriteAPIKey);    
+        function remoteState = readLatestGameState(obj)
+            data = thingSpeakRead(obj.ChannelID, ...
+                'Fields', 1:8, ...
+                'NumPoints', 1, ...
+                'ReadKey', obj.ReadAPIKey);
 
-% Double check that everything was sent correctly.
-response = thinkspeakWrite (ChannelID,[player_id, dice_roll, turn_number, p1_score, p2_score],'WriteKey', WriteAPIKey);
+            if isempty(data) || all(isnan(data))
+                remoteState = [];
+                return;
+            end
 
-if isempty(response)
-    disp('Failed to send data to ThingSpeak.');
+            remoteState = struct( ...
+                'CurrentPlayer', data(1), ...
+                'LastRoll', data(2), ...
+                'RoundNum', data(3), ...
+                'P1Score', data(4), ...
+                'P2Score', data(5), ...
+                'TargetNumber', data(6), ...
+                'GameOver', logical(data(7)), ...
+                'Winner', data(8));
+        end
+
+        function applyRemoteState(~, game, remoteState)
+            if isempty(remoteState)
+                return;
+            end
+
+            game.CurrentPlayer = remoteState.CurrentPlayer;
+            game.P1Score = remoteState.P1Score;
+            game.P2Score = remoteState.P2Score;
+            game.RoundNum = remoteState.RoundNum;
+            game.TargetNumber = remoteState.TargetNumber;
+            game.GameOver = remoteState.GameOver;
+            game.Winner = remoteState.Winner;
+        end
+    end
 end
-
-% initial read to thingspeak.
-thinkspeakRead(ChannelID, 'ReadKey', ReadAPIKey, 'NumPoints', 1); % Reads the most recent entry from the channel
