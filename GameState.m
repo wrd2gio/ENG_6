@@ -9,6 +9,7 @@ classdef GameState < handle
         GameOver = false
         Winner = 0
         RoundNum = 0
+        Network = []
 
         % Exist for Player Skips
         RollsRemainingThisTurn = 1   % How many rolls player must do this turn (1 normally, 2 if penalized)
@@ -30,6 +31,24 @@ classdef GameState < handle
             obj.RollsRemainingThisTurn = 1;
             obj.P1PenaltyNext = false;
             obj.P2PenaltyNext = false;
+            obj.publishThingSpeakState(0);
+        end
+        function enableThingSpeak(obj, channelID, writeKey, readKey, publishInitialState)
+            if nargin < 5
+                publishInitialState = false;
+            end
+            if nargin < 2
+                obj.Network = NetworkMessanger();
+            elseif nargin < 3
+                obj.Network = NetworkMessanger(channelID);
+            elseif nargin < 4
+                obj.Network = NetworkMessanger(channelID, writeKey);
+            else
+                obj.Network = NetworkMessanger(channelID, writeKey, readKey);
+            end
+            if publishInitialState
+                obj.publishThingSpeakState(0);
+            end
         end
         function roll = RollDice(obj)
             if obj.GameOver
@@ -51,10 +70,12 @@ classdef GameState < handle
             if obj.CurrentPlayer == 1 && obj.P1Score >= obj.TargetNumber
                 obj.Winner = 2;
                 obj.GameOver = true;
+                obj.publishThingSpeakState(roll);
                 return;
             elseif obj.CurrentPlayer == 2 && obj.P2Score >= obj.TargetNumber
-                obj.Winner = 2;
+                obj.Winner = 1;
                 obj.GameOver = true;
+                obj.publishThingSpeakState(roll);
                 return;
             end
 
@@ -62,6 +83,8 @@ classdef GameState < handle
             if obj.RollsRemainingThisTurn <= 0
                 obj.switchTurn();
             end
+
+            obj.publishThingSpeakState(roll);
 
         end
         function switchTurn(obj)
@@ -94,6 +117,7 @@ classdef GameState < handle
             
             % Switch turns immediately (skip this turn without rolling)
             obj.switchTurn();
+            obj.publishThingSpeakState(0);
             
         end
 
@@ -112,6 +136,38 @@ classdef GameState < handle
                 status = sprintf('Player %d - Roll once then turn ends', obj.CurrentPlayer);
             end
             
+        end
+
+        function publishThingSpeakState(obj, lastRoll)
+            if isempty(obj.Network)
+                return;
+            end
+            try
+                obj.Network.publishGameState(obj, lastRoll);
+            catch ME
+                warning('GameState:ThingSpeakWriteFailed', ...
+                    'Could not write game state to ThingSpeak: %s', ME.message);
+            end
+        end
+
+        function didUpdate = readThingSpeakState(obj)
+            didUpdate = false;
+            if isempty(obj.Network)
+                return;
+            end
+            try
+                remoteState = obj.Network.readLatestGameState();
+                if isempty(remoteState)
+                    return;
+                end
+                if remoteState.RoundNum >= obj.RoundNum
+                    obj.Network.applyRemoteState(obj, remoteState);
+                    didUpdate = true;
+                end
+            catch ME
+                warning('GameState:ThingSpeakReadFailed', ...
+                    'Could not read game state from ThingSpeak: %s', ME.message);
+            end
         end
             
     end
