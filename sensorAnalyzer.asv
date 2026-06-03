@@ -40,7 +40,7 @@ classdef sensorAnalyzer < handle
         function window = getSignal(obj, windowSize)
 
             if nargin < 2
-                windowSize = 20;
+                windowSize = 20
             end
 
             if isempty(obj.AccelData)
@@ -55,10 +55,9 @@ classdef sensorAnalyzer < handle
                 window = obj.AccelData(:, 1:3);
              end
         end
-
-
         function clearData(obj)
-            obj.AccelData = [];    
+            obj.Acceldata [];
+       
         end
         
 

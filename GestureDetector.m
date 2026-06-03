@@ -3,36 +3,54 @@ classdef GestureDetector < handle
     properties
         Gesture
         Sensor
-        ShakeThreshold = 10;
-        SwipeThreshold = 5;
-        SkipThreshold = 1;
+        ShakeThreshold = 3     % Mean dynamic acceleration for shake (m/s²)
+        SkipThreshold = 1.25      % Mean dynamic acceleration for skip (m/s²)
+        lastTriggerTime = 0
+        CooldownSeconds = 1.5
     end
     methods
         function obj = GestureDetector(sensorObj)
             obj.Sensor = sensorObj;
         end
-        function gestures = detect(obj)
-
+        
+        function gesture = detect(obj)
             window = obj.Sensor.getSignal(); % Retrives Signal Data from sensorAnalyzer.m
             
-            if isempty(window)
-                gestures = []; % Initialize gestures array
+            if isempty(window) || size(window,1) < 10
+                gesture = "None"; % No gesture if not enough data
                 return;
             end
             Ax = window(:,1);
             Ay = window(:,2);
             Az = window(:,3);
 
-            A = sqrt(Ax.^2 + Ay.^2 + Az.^2);
-            % Detect gestures based on acceleration magnitude
-            if(mean(movmean(A, 5)) >= obj.ShakeThreshold)
-                gestures = "Shake";
-            elseif (mean(movmean(A, 5)) < obj.ShakeThreshold) && (mean(movmean(A,5)) > obj.SwipeThreshold)
-                gestures = "Swipe";
-            elseif (mean(movmean(A, 5)) > obj.SkipThreshold) && (mean(movmean(A,5)) < obj.SwipeThreshold)
-                gestures = "Skip";
+            A = sqrt(Ax.^2 + Ay.^2 + Az.^2); % Magnitude including gravity
+
+
+            g = mean(A);
+            A_dyn = abs(A - g); % Removes Gravity
+
+            % Mean dynamic acceleration over the window
+            mean_dyn = mean(A_dyn);
+
+            % Cooldown to avoid repeated triggers
+            currentTime = tic;
+            if (currentTime - obj.lastTriggerTime) < obj.CooldownSeconds
+                gesture = "None";
+                return;
+            end
+            %% Classify Gestures
+            if mean_dyn >= obj.ShakeThreshold
+                gesture = "Shake";
+                obj.lastTriggerTime = currentTime;
+                disp(mean_dyn)
+            elseif (mean_dyn < obj.ShakeThreshold) && (mean_dyn > obj.SkipThreshold)
+                gesture = "Skip";
+                obj.lastTriggerTime = currentTime;
+                disp(mean_dyn)
             else
-                gestures = "None";
+                gesture = "None";
+                disp(mean_dyn)
             end
 
         end
