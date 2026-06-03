@@ -1,0 +1,62 @@
+classdef GameState < handle
+    
+    properties
+        P1Score = 0
+        P2Score = 0
+        CurrentPlayer = 1
+        TokenHolder = 0
+        TargetNumber
+        GameOver = false
+        Winner = 0
+    end
+
+
+ % ---ThingSpeak Config--- %
+    properties(Access = private)
+        ChannelID = 3383934;                % ThingSpeak Channel ID
+        WriteAPIKey = 'NPMTEL19I4BXYDHS';  % Write API Key
+    end
+
+
+    methods
+        function obj = GameState()  
+            obj.TargetNumber = randi([20 30]);
+        end
+        function reset(obj)
+            obj.P1Score = 0;
+            obj.P2Score = 0;
+            obj.CurrentPlayer = 1;
+            obj.TargetNumber = randi([20, 30]);
+            obj.GameOver = false;
+            obj.Winner = 0;
+        end
+        function roll = RollDice(obj)
+            if obj.GameOver
+                return;
+            end
+
+            roll = randi([1 6]);
+            if obj.CurrentPlayer == 1
+                obj.P1Score = roll + obj.P1Score
+                % obj.TokenHolder = 2;
+
+                return
+            else
+                obj.P2Score = roll + obj.P2Score
+                return
+            end
+            response = thinkspeakWrite (obj.ChannelID, [1, 2, 3, 4, 5], {obj.CurrentPlayer, roll, 1, obj.P1Score, obj.P2Score}, 'WriteKey', obj.WriteAPIKey);
+            pause(1); % for the delay in writing to ThingSpeak
+            if isempty(response)
+                disp('Failed to send data to ThingSpeak.');
+            end
+            
+        end
+
+
+
+
+    end
+    
+end
+         
