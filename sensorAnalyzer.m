@@ -29,6 +29,9 @@ classdef sensorAnalyzer < handle
             obj.mobileDevConnection = mobiledev;
         end
         function startLogging(obj)
+            if isempty(obj.mobileDevConnection) || ~isvalid(obj.mobileDevConnection)
+                obj.mobileDevConnection = mobiledev;
+            end
             obj.mobileDevConnection.Logging = 1;
             pause(2);
             obj.mobileDevConnection.Logging = 0;
@@ -52,7 +55,7 @@ classdef sensorAnalyzer < handle
                 return;
             end
 
-            nSamples = size(obj.AccelData, 1)
+            nSamples = size(obj.AccelData, 1);
              if nSamples >= windowSize
                 window = obj.AccelData(end-windowSize+1:end, 1:3);
             else
