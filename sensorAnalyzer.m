@@ -22,6 +22,10 @@ classdef sensorAnalyzer < handle
     methods
         
         function obj = sensorAnalyzer()
+                try
+                    clear mobiledev;  % Clear from workspace
+                catch
+                end
             obj.mobileDevConnection = mobiledev;
         end
         function startLogging(obj)
