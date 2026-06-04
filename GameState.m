@@ -10,6 +10,7 @@ classdef GameState < handle
         Winner = 0
         RoundNum = 0
         Network = []
+        LastRoll = 0
 
         % Exist for Player Skips
         RollsRemainingThisTurn = 1   % How many rolls player must do this turn (1 normally, 2 if penalized)
@@ -28,6 +29,8 @@ classdef GameState < handle
             obj.TargetNumber = randi([20, 30]);
             obj.GameOver = false;
             obj.Winner = 0;
+            obj.RoundNum = 0;
+            obj.LastRoll = 0;
             obj.RollsRemainingThisTurn = 1;
             obj.P1PenaltyNext = false;
             obj.P2PenaltyNext = false;
@@ -58,6 +61,8 @@ classdef GameState < handle
 
 
             roll = randi([1 6]);
+            obj.LastRoll = roll;
+
             if obj.CurrentPlayer == 1
                 obj.P1Score = roll + obj.P1Score;
                 obj.TokenHolder = obj.TokenHolder + 1;
@@ -107,6 +112,7 @@ classdef GameState < handle
                 
         function skipTurn(obj)
             if obj.GameOver; return; end
+            obj.LastRoll = 0;
             
             % Apply penalty to current player for their NEXT turn
             if obj.CurrentPlayer == 1
